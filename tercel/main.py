@@ -5,6 +5,8 @@ PySide interface for Tercel
 
 from PySide.QtCore import *
 from PySide.QtGui import *
+from PySide.QtWebKit import QWebView
+
 
 class Tercel(QApplication):
 	def __init__(self, argv):
@@ -33,8 +35,10 @@ class MainWindow(QMainWindow):
 	def actionCloseTab(self):
 		pass
 
-class NewTabWidget(QWidget):
-	pass
+class NewTabWidget(QWebView):
+	def __init__(self, *args):
+		super(NewTabWidget, self).__init__(*args)
+		self.load("http://google.com")
 
 def main():
 	import signal
