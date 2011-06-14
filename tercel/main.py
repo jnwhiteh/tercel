@@ -11,14 +11,18 @@ class Tercel(QApplication):
 		super(Tercel, self).__init__(argv)
 		self.mainWindow = MainWindow()
 
+class TabWidget(QTabWidget):
+	def __init__(self, *args):
+		super(TabWidget, self).__init__(*args)
+		self.setDocumentMode(True)
+		self.setMovable(True)
+		self.setTabsClosable(True)
+
 class MainWindow(QMainWindow):
 	def __init__(self, *args):
 		super(MainWindow, self).__init__(*args)
 		
-		self.tabWidget = QTabWidget()
-		self.tabWidget.setDocumentMode(True)
-		self.tabWidget.setMovable(True)
-		self.tabWidget.setTabsClosable(True)
+		self.tabWidget = TabWidget(self)
 		self.tabWidget.tabCloseRequested.connect(self.actionCloseTab)
 		self.setCentralWidget(self.tabWidget)
 		self.actionNewTab()
