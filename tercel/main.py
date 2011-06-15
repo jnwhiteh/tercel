@@ -44,7 +44,7 @@ def main():
 	import signal
 	import sys
 	signal.signal(signal.SIGINT, signal.SIG_DFL)
-	app = Tercel(sys.argv)
+	app = Tercel(sys.argv[1:])
 	
 	app.mainWindow.show()
 	sys.exit(app.exec_())
