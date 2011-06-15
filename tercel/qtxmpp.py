@@ -7,7 +7,7 @@ from sleekxmpp import ClientXMPP
 
 class QXMPPClient(ClientXMPP):
 	def __init__(self, parent=None, *args):
-		super(ClientXMPP, self).__init__(*args)
+		super(QXMPPClient, self).__init__(*args)
 		self._parent = parent
 	
 	def parent(self):
