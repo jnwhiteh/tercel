@@ -6,12 +6,29 @@ PySide interface for Tercel
 from PySide.QtCore import *
 from PySide.QtGui import *
 from PySide.QtWebKit import QWebView
+from .qtxmpp import QXMPPClient
 
 
 class Tercel(QApplication):
 	def __init__(self, argv):
 		super(Tercel, self).__init__(argv)
 		self.mainWindow = MainWindow()
+		username, password = argv
+		self.xmpp = XMPPClient(self, username, password)
+		self.xmpp.connect(("talk.google.com", 5222))
+		self.xmpp.process(threaded=False)
+
+class XMPPClient(QXMPPClient):
+	def __init__(self, *args):
+		super(XMPPClient, self).__init__(*args)
+		self.add_event_handler("session_start", self.onConnect)
+		self.add_event_handler("message", self.onMessageReceived)
+	
+	def onConnect(self, event):
+		self.sendPresence("Writing an XMPP client, please do not send messages")
+	
+	def onMessageReceived(self, message):
+		self.sendMessage(message["from"], message["body"])
 
 class TabWidget(QTabWidget):
 	def __init__(self, *args):
