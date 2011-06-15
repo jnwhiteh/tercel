@@ -15,7 +15,15 @@ class Tercel(QApplication):
 		self.mainWindow = MainWindow()
 		username, password = argv
 		self.xmpp = XMPPClient(self, username, password)
-		self.xmpp.connect(("talk.google.com", 5222))
+
+class XMPPConnectionThread(QThread):
+	def __init__(self, xmpp, host, *args):
+		super(XMPPConnectionThread, self).__init__(*args)
+		self.xmpp = xmpp
+		self.host = host
+	
+	def run(self):
+		self.xmpp.connect(self.host)
 		self.xmpp.process(threaded=False)
 
 class XMPPClient(QXMPPClient):
@@ -23,6 +31,7 @@ class XMPPClient(QXMPPClient):
 		super(XMPPClient, self).__init__(*args)
 		self.add_event_handler("session_start", self.onConnect)
 		self.add_event_handler("message", self.onMessageReceived)
+		XMPPConnectionThread(self, ("talk.google.com", 5222), qApp).start()
 	
 	def onConnect(self, event):
 		self.sendPresence("Writing an XMPP client, please do not send messages")
