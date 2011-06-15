@@ -50,13 +50,37 @@ class MainWindow(QMainWindow):
 	def __init__(self, *args):
 		super(MainWindow, self).__init__(*args)
 		
+		fileMenu = self.menuBar().addMenu("&File")
+		fileMenu.addAction(QIcon.fromTheme("application-exit"), "&Quit", self.close, "Ctrl+Q")
+		
+		self.tabs = {}
+		
+		layout = QVBoxLayout(self)
+		centralWidget = QWidget(self)
+		centralWidget.setLayout(layout)
+		self.setCentralWidget(centralWidget)
+		
 		self.tabWidget = TabWidget(self)
 		self.tabWidget.tabCloseRequested.connect(self.actionCloseTab)
-		self.setCentralWidget(self.tabWidget)
+		layout.addWidget(self.tabWidget)
+		
+		self.textbox = QTextEdit(self)
+		layout.addWidget(self.textbox)
+		
 		self.actionNewTab()
+		self.actionOpenToContact("account", "adys.wh@gmail.com")
 	
 	def actionNewTab(self):
 		self.tabWidget.addTab(NewTabWidget(), QIcon.fromTheme("user-online"), "New Tab")
+	
+	def actionOpenToContact(self, account, address):
+		internalAddress = "tercel://contact/%s/%s/" % (account, address)
+		if internalAddress not in self.tabs:
+			widget = QWebView()
+			widget.load("http://example.com")
+			self.tabs[internalAddress] = widget
+		
+		self.tabWidget.addTab(widget, QIcon.fromTheme("user-online"), address)
 	
 	def actionCloseTab(self):
 		pass
