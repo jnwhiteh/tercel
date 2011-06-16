@@ -39,6 +39,7 @@ class XMPPClient(QXMPPClient):
 
 class TabWidget(QTabWidget):
 	tabOpenRequested = Signal(str, str, object)
+	messageReceived = Signal(object)
 	
 	def __init__(self, *args):
 		super(TabWidget, self).__init__(*args)
@@ -47,6 +48,8 @@ class TabWidget(QTabWidget):
 		self.setMovable(True)
 		self.setTabsClosable(True)
 		self.tabOpenRequested.connect(self.actionOpenToContact)
+		# hack? Because of threading issues, we seem to have to callback like that...
+		self.messageReceived.connect(lambda func: func())
 	
 	def actionOpenToContact(self, account, address, callback):
 		#internalAddress = "tercel://contact/%s/%s/" % (account, address)
@@ -85,12 +88,16 @@ class MainWindow(QMainWindow):
 	def messageReceived(self, message):
 		to = message["to"].full
 		from_ = message["from"].full
+		body = message["body"]
 		if to not in self.tabWidget.tabs:
-			self.tabWidget.tabOpenRequested.emit(from_, to, lambda: self.sendMessage(from_, to, message["body"]))
+			# We need a different method here, because we need to wait for page load
+			self.tabWidget.tabOpenRequested.emit(from_, to, lambda: self.onMessageReceived(from_, to, body))
+		else:
+			self.tabWidget.messageReceived.emit(lambda: self.onMessageReceived(from_, to, body))
 	
-	def sendMessage(self, sender, recipient, message):
+	def onMessageReceived(self, sender, recipient, message):
 		date = strftime("[%H:%M:%S]")
-		source = "newMessage(%r, %r, %r, %r);" % (date, sender, message, 1)
+		source = "newMessage(%r, %r, %r, %r)" % (date, sender, message, 1)
 		frame = self.tabWidget.tabs[recipient].page().currentFrame()
 		frame.evaluateJavaScript(source)
 	
