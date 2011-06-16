@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title></title>
+<script type="text/javascript">
+function newMessage(date, sender, content, from) {
+	var message = document.createElement("div");
+	message.className = "message from" + from;
+	
+	dateSpan = document.createElement("span");
+	dateSpan.className = "date"
+	var text = document.createTextNode(date + " ");
+	dateSpan.appendChild(text);
+	message.appendChild(dateSpan);
+	
+	var nameSpan = document.createElement("span");
+	nameSpan.className = "sender";
+	var text = document.createTextNode(sender + ": ");
+	nameSpan.appendChild(text);
+	message.appendChild(nameSpan);
+	
+	var messageSpan = document.createElement("span");
+	messageSpan.className = "content";
+	var text = document.createTextNode(content);
+	messageSpan.appendChild(text);
+	message.appendChild(messageSpan);
+	
+	return message;
+}
+</script>
+<style type="text/css">
+.message {
+	margin-bottom: 0.5em;
+}
+.name {
+	font-weight: bold;
+}
+
+/* name colors */
+.from0 .date, .from0 .sender {
+	color: red;
+}
+.from1 .date, .from1 .sender {
+	color: blue;
+}
+</style>
+</head>
+<body>
+<div id="tercel-message-box">
+
+</div>
+</body>
+</html>
