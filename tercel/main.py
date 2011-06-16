@@ -3,6 +3,7 @@
 PySide interface for Tercel
 """
 
+from time import strftime
 from PySide.QtCore import *
 from PySide.QtGui import *
 from PySide.QtWebKit import QWebView
@@ -74,13 +75,19 @@ class MainWindow(QMainWindow):
 		self.tabWidget.addTab(NewTabWidget(), QIcon.fromTheme("user-online"), "New Tab")
 	
 	def actionOpenToContact(self, account, address):
-		internalAddress = "tercel://contact/%s/%s/" % (account, address)
+		#internalAddress = "tercel://contact/%s/%s/" % (account, address)
+		internalAddress = address
 		if internalAddress not in self.tabs:
 			widget = QWebView()
-			widget.load("http://example.com")
+			widget.load("file:///home/adys/src/git/tercel/tercel/res/tab.html")
 			self.tabs[internalAddress] = widget
 		
 		self.tabWidget.addTab(widget, QIcon.fromTheme("user-online"), address)
+	
+	def sendMessage(self, sender, recipient, message):
+		date = strftime("[%H:%M:%S]")
+		source = "newMessage(%r, %r, %r, %r)" % (date, sender, message, 1)
+		self.tabs[recipient].page().currentFrame().evaluateJavaScript(source)
 	
 	def actionCloseTab(self):
 		pass
