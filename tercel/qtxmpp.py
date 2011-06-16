@@ -15,7 +15,10 @@ class QXMPPClient(ClientXMPP):
 	
 	def parent(self):
 		return self._parent
+	
+	def queryRoster(self):
+		self.get_roster()
 
 # Remove for production
-import logging
-logging.basicConfig(level=logging.DEBUG, format="%(levelname)-8s %(message)s")
+#import logging
+#logging.basicConfig(level=logging.DEBUG, format="%(levelname)-8s %(message)s")
