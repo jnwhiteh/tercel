@@ -10,6 +10,9 @@ class QXMPPClient(ClientXMPP):
 		super(QXMPPClient, self).__init__(*args)
 		self._parent = parent
 	
+	def connect_(self, event, callback):
+		self.add_event_handler(event, callback)
+	
 	def parent(self):
 		return self._parent
 
