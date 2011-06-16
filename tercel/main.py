@@ -14,6 +14,7 @@ class Tercel(QApplication):
 	def __init__(self, argv):
 		super(Tercel, self).__init__(argv)
 		self.mainWindow = MainWindow()
+		self.mainWindow.newTab()
 		username, password = argv
 		self.xmpp = XMPPClient(self, username, password)
 
@@ -38,7 +39,7 @@ class XMPPClient(QXMPPClient):
 		self.sendPresence("Writing an XMPP client, please do not send messages")
 
 class TabWidget(QTabWidget):
-	tabOpenRequested = Signal(str, str, object)
+	tabOpenRequested = Signal(object, object)
 	messageReceived = Signal(object)
 	
 	def __init__(self, *args):
@@ -51,15 +52,37 @@ class TabWidget(QTabWidget):
 		# hack? Because of threading issues, we seem to have to callback like that...
 		self.messageReceived.connect(lambda func: func())
 	
-	def actionOpenToContact(self, account, address, callback):
-		#internalAddress = "tercel://contact/%s/%s/" % (account, address)
-		internalAddress = address
-		if internalAddress not in self.tabs:
-			widget = QWebView()
-			widget.load("file:///home/adys/src/git/tercel/tercel/res/tab.html")
-			self.tabs[internalAddress] = widget
-		self.addTab(widget, QIcon.fromTheme("user-online"), "address")
-		widget.loadFinished.connect(callback)
+	def actionOpenToContact(self, message, callback):
+		if message in self.tabs:
+			# open to that tab
+			return
+		layout = QVBoxLayout()
+		widget = QWidget(self)
+		widget.setLayout(layout)
+		widget.webView = QWebView()
+		widget.webView.load("file:///home/adys/src/git/tercel/tercel/res/tab.html")
+		layout.addWidget(widget.webView)
+		widget.textEdit = TextEdit()
+		layout.addWidget(widget.textEdit)
+		widget.message = message
+		self.tabs[message["to"].full] = widget
+		widget.webView.loadFinished.connect(callback)
+		self.addTab(widget, QIcon.fromTheme("user-online"), widget.message["from"].full)
+
+class TextEdit(QTextEdit):
+	def keyPressEvent(self, e):
+		if e.key() == Qt.Key_Return or e.key() == Qt.Key_Enter:
+			if e.modifiers() & (Qt.ShiftModifier | Qt.ControlModifier | Qt.AltModifier):
+				self.insertPlainText("\n")
+			else:
+				self.sendMessage()
+			return
+		super(TextEdit, self).keyPressEvent(e)
+	
+	def sendMessage(self):
+		recipient = self.parent().parent().parent().currentWidget().message["from"]
+		qApp.xmpp.sendMessage(recipient, self.toPlainText())
+		self.clear()
 
 class MainWindow(QMainWindow):
 	def __init__(self, *args):
@@ -73,32 +96,24 @@ class MainWindow(QMainWindow):
 		centralWidget.setLayout(layout)
 		self.setCentralWidget(centralWidget)
 		
-		self.tabWidget = TabWidget(self)
+		self.tabWidget = TabWidget()
 		self.tabWidget.tabCloseRequested.connect(self.actionCloseTab)
 		layout.addWidget(self.tabWidget)
-		
-		self.textbox = QTextEdit(self)
-		layout.addWidget(self.textbox)
-		
-		self.actionNewTab()
 	
-	def actionNewTab(self):
+	def newTab(self):
 		self.tabWidget.addTab(NewTabWidget(), QIcon.fromTheme("user-online"), "New Tab")
 	
 	def messageReceived(self, message):
-		to = message["to"].full
-		from_ = message["from"].full
-		body = message["body"]
-		if to not in self.tabWidget.tabs:
+		if message["to"].full not in self.tabWidget.tabs:
 			# We need a different method here, because we need to wait for page load
-			self.tabWidget.tabOpenRequested.emit(from_, to, lambda: self.onMessageReceived(from_, to, body))
+			self.tabWidget.tabOpenRequested.emit(message, lambda: self.onMessageReceived(message))
 		else:
-			self.tabWidget.messageReceived.emit(lambda: self.onMessageReceived(from_, to, body))
+			self.tabWidget.messageReceived.emit(lambda: self.onMessageReceived(message))
 	
-	def onMessageReceived(self, sender, recipient, message):
+	def onMessageReceived(self, message):
 		date = strftime("[%H:%M:%S]")
-		source = "newMessage(%r, %r, %r, %r)" % (date, sender, message, 1)
-		frame = self.tabWidget.tabs[recipient].page().currentFrame()
+		source = "newMessage(%r, %r, %r, %r)" % (date, message["from"].full, message["body"], 1)
+		frame = self.tabWidget.tabs[message["to"].full].webView.page().currentFrame()
 		frame.evaluateJavaScript(source)
 	
 	def actionCloseTab(self):
