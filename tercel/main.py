@@ -55,7 +55,7 @@ class MainWindow(QMainWindow):
 		
 		self.tabs = {}
 		
-		layout = QVBoxLayout(self)
+		layout = QVBoxLayout()
 		centralWidget = QWidget(self)
 		centralWidget.setLayout(layout)
 		self.setCentralWidget(centralWidget)
