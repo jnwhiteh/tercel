@@ -30,22 +30,33 @@ class XMPPConnectionThread(QThread):
 class XMPPClient(QXMPPClient):
 	def __init__(self, *args):
 		super(XMPPClient, self).__init__(*args)
-		self.add_event_handler("session_start", self.onConnect)
-		self.add_event_handler("message", self.onMessageReceived)
+		self.connect_("session_start", self.onConnect)
+		self.connect_("message", self.parent().mainWindow.messageReceived)
 		XMPPConnectionThread(self, ("talk.google.com", 5222), qApp).start()
 	
 	def onConnect(self, event):
 		self.sendPresence("Writing an XMPP client, please do not send messages")
-	
-	def onMessageReceived(self, message):
-		self.sendMessage(message["from"], message["body"])
 
 class TabWidget(QTabWidget):
+	tabOpenRequested = Signal(str, str, object)
+	
 	def __init__(self, *args):
 		super(TabWidget, self).__init__(*args)
+		self.tabs = {}
 		self.setDocumentMode(True)
 		self.setMovable(True)
 		self.setTabsClosable(True)
+		self.tabOpenRequested.connect(self.actionOpenToContact)
+	
+	def actionOpenToContact(self, account, address, callback):
+		#internalAddress = "tercel://contact/%s/%s/" % (account, address)
+		internalAddress = address
+		if internalAddress not in self.tabs:
+			widget = QWebView()
+			widget.load("file:///home/adys/src/git/tercel/tercel/res/tab.html")
+			self.tabs[internalAddress] = widget
+		self.addTab(widget, QIcon.fromTheme("user-online"), "address")
+		widget.loadFinished.connect(callback)
 
 class MainWindow(QMainWindow):
 	def __init__(self, *args):
@@ -53,8 +64,6 @@ class MainWindow(QMainWindow):
 		
 		fileMenu = self.menuBar().addMenu("&File")
 		fileMenu.addAction(QIcon.fromTheme("application-exit"), "&Quit", self.close, "Ctrl+Q")
-		
-		self.tabs = {}
 		
 		layout = QVBoxLayout()
 		centralWidget = QWidget(self)
@@ -69,25 +78,21 @@ class MainWindow(QMainWindow):
 		layout.addWidget(self.textbox)
 		
 		self.actionNewTab()
-		self.actionOpenToContact("account", "adys.wh@gmail.com")
 	
 	def actionNewTab(self):
 		self.tabWidget.addTab(NewTabWidget(), QIcon.fromTheme("user-online"), "New Tab")
 	
-	def actionOpenToContact(self, account, address):
-		#internalAddress = "tercel://contact/%s/%s/" % (account, address)
-		internalAddress = address
-		if internalAddress not in self.tabs:
-			widget = QWebView()
-			widget.load("file:///home/adys/src/git/tercel/tercel/res/tab.html")
-			self.tabs[internalAddress] = widget
-		
-		self.tabWidget.addTab(widget, QIcon.fromTheme("user-online"), address)
+	def messageReceived(self, message):
+		to = message["to"].full
+		from_ = message["from"].full
+		if to not in self.tabWidget.tabs:
+			self.tabWidget.tabOpenRequested.emit(from_, to, lambda: self.sendMessage(from_, to, message["body"]))
 	
 	def sendMessage(self, sender, recipient, message):
 		date = strftime("[%H:%M:%S]")
-		source = "newMessage(%r, %r, %r, %r)" % (date, sender, message, 1)
-		self.tabs[recipient].page().currentFrame().evaluateJavaScript(source)
+		source = "newMessage(%r, %r, %r, %r);" % (date, sender, message, 1)
+		frame = self.tabWidget.tabs[recipient].page().currentFrame()
+		frame.evaluateJavaScript(source)
 	
 	def actionCloseTab(self):
 		pass
