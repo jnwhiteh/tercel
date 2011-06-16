@@ -7,7 +7,7 @@ function newMessage(date, sender, content, from) {
 	var message = document.createElement("div");
 	message.className = "message from" + from;
 	
-	dateSpan = document.createElement("span");
+	var dateSpan = document.createElement("span");
 	dateSpan.className = "date"
 	var text = document.createTextNode(date + " ");
 	dateSpan.appendChild(text);
