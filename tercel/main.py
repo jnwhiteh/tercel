@@ -3,6 +3,7 @@
 PySide interface for Tercel
 """
 
+import json
 from time import strftime
 from PySide.QtCore import *
 from PySide.QtGui import *
@@ -14,9 +15,9 @@ class Tercel(QApplication):
 	def __init__(self, argv):
 		super(Tercel, self).__init__(argv)
 		self.mainWindow = MainWindow()
-		self.mainWindow.newTab()
 		username, password = argv
 		self.xmpp = XMPPClient(self, username, password)
+		self.mainWindow.newTab()
 
 class XMPPConnectionThread(QThread):
 	def __init__(self, xmpp, host, *args):
@@ -31,12 +32,13 @@ class XMPPConnectionThread(QThread):
 class XMPPClient(QXMPPClient):
 	def __init__(self, *args):
 		super(XMPPClient, self).__init__(*args)
-		self.connect_("session_start", self.onConnect)
+		self.connect_("session_start", self.start)
 		self.connect_("message", self.parent().mainWindow.messageReceived)
 		XMPPConnectionThread(self, ("talk.google.com", 5222), qApp).start()
 	
-	def onConnect(self, event):
-		self.sendPresence("Writing an XMPP client, please do not send messages")
+	def start(self, event):
+		self.sendPresence(pshow="Writing an XMPP client, please do not send messages")
+		self.queryRoster()
 
 class TabWidget(QTabWidget):
 	tabOpenRequested = Signal(object, object)
@@ -122,7 +124,17 @@ class MainWindow(QMainWindow):
 class NewTabWidget(QWebView):
 	def __init__(self, *args):
 		super(NewTabWidget, self).__init__(*args)
-		self.load("http://google.com")
+		self.load("file:///home/adys/src/git/tercel/tercel/res/new-tab.html")
+		
+		def loadRoster():
+			# blocker?
+			qApp.xmpp.queryRoster()
+			self.updateRoster(qApp.xmpp.roster)
+		self.loadFinished.connect(loadRoster)
+	
+	def updateRoster(self, roster):
+		print json.dumps(roster)
+		self.page().currentFrame().evaluateJavaScript("updateRoster(%s)" % (json.dumps(roster)))
 
 def main():
 	import signal
