@@ -41,8 +41,8 @@ class XMPPClient(QXMPPClient):
 		self.queryRoster()
 
 class TabWidget(QTabWidget):
-	tabOpenRequested = Signal(object, object)
-	messageReceived = Signal(object)
+	tabOpenRequested = Signal(dict)
+	messageReceived = Signal(dict)
 	
 	def __init__(self, *args):
 		super(TabWidget, self).__init__(*args)
@@ -50,12 +50,11 @@ class TabWidget(QTabWidget):
 		self.setDocumentMode(True)
 		self.setMovable(True)
 		self.setTabsClosable(True)
-		self.tabOpenRequested.connect(self.actionOpenToContact)
-		# hack? Because of threading issues, we seem to have to callback like that...
-		self.messageReceived.connect(lambda func: func())
+		self.tabOpenRequested.connect(self.onTabOpenRequested)
+		self.messageReceived.connect(self.onMessageReceived)
 	
-	def actionOpenToContact(self, message, callback):
-		if message in self.tabs:
+	def onTabOpenRequested(self, message):
+		if message["from"] in self.tabs:
 			# open to that tab
 			return
 		layout = QVBoxLayout()
@@ -67,9 +66,14 @@ class TabWidget(QTabWidget):
 		widget.textEdit = TextEdit()
 		layout.addWidget(widget.textEdit)
 		widget.message = message
-		self.tabs[message["to"].full] = widget
-		widget.webView.loadFinished.connect(callback)
-		self.addTab(widget, QIcon.fromTheme("user-online"), widget.message["from"].full)
+		self.tabs[message["to"]] = widget
+		widget.webView.loadFinished.connect(lambda: self.onMessageReceived(message))
+		self.addTab(widget, QIcon.fromTheme("user-online"), widget.message["from"])
+	
+	def onMessageReceived(self, message):
+		source = "newMessage(%s)" % (json.dumps(message))
+		frame = self.tabs[message["to"]].webView.page().currentFrame()
+		frame.evaluateJavaScript(source)
 
 class TextEdit(QTextEdit):
 	def keyPressEvent(self, e):
@@ -108,17 +112,18 @@ class MainWindow(QMainWindow):
 		self.tabWidget.addTab(NewTabWidget(), QIcon.fromTheme("user-online"), "New Tab")
 	
 	def messageReceived(self, message):
-		if message["to"].full not in self.tabWidget.tabs:
+		message = dict(message)
+		message["from_resource"] = message["from"].resource
+		message["from"] = message["from"].bare
+		message["to_resource"] = message["to"].resource
+		message["to"] = message["to"].bare
+		message["timestamp"] = strftime("[%H:%M:%S]")
+		
+		if message["to"] not in self.tabWidget.tabs:
 			# We need a different method here, because we need to wait for page load
-			self.tabWidget.tabOpenRequested.emit(message, lambda: self.onMessageReceived(message))
+			self.tabWidget.tabOpenRequested.emit(message)
 		else:
-			self.tabWidget.messageReceived.emit(lambda: self.onMessageReceived(message))
-	
-	def onMessageReceived(self, message):
-		date = strftime("[%H:%M:%S]")
-		source = "newMessage(%r, %r, %r, %r)" % (date, message["from"].full, message["body"], 1)
-		frame = self.tabWidget.tabs[message["to"].full].webView.page().currentFrame()
-		frame.evaluateJavaScript(source)
+			self.tabWidget.messageReceived.emit(message)
 	
 	def closeTab(self):
 		self.tabWidget.removeTab(self.tabWidget.currentIndex())
@@ -135,6 +140,7 @@ class NewTabWidget(QWebView):
 		self.loadFinished.connect(loadRoster)
 	
 	def updateRoster(self, roster):
+		# XXX laggy
 		self.page().currentFrame().evaluateJavaScript("updateRoster(%s)" % (json.dumps(roster)))
 
 def main():

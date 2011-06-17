@@ -3,7 +3,11 @@
 <head>
 <title></title>
 <script type="text/javascript">
-function newMessage(date, sender, content, from) {
+function newMessage(message) {
+	var date = message["timestamp"];
+	var sender = message["from"];
+	var body = message["body"];
+	var from = 0; // XXX
 	var message = document.createElement("div");
 	message.className = "message from" + from;
 	
@@ -20,8 +24,8 @@ function newMessage(date, sender, content, from) {
 	message.appendChild(nameSpan);
 	
 	var messageSpan = document.createElement("span");
-	messageSpan.className = "content";
-	var text = document.createTextNode(content);
+	messageSpan.className = "body";
+	var text = document.createTextNode(body);
 	messageSpan.appendChild(text);
 	message.appendChild(messageSpan);
 	
