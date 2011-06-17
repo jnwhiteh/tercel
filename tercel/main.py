@@ -101,6 +101,7 @@ class MainWindow(QMainWindow):
 		self.setCentralWidget(centralWidget)
 		
 		self.tabWidget = TabWidget()
+		self.tabWidget.tabCloseRequested.connect(self.closeTab)
 		layout.addWidget(self.tabWidget)
 	
 	def newTab(self):
