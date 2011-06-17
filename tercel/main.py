@@ -91,6 +91,7 @@ class MainWindow(QMainWindow):
 		super(MainWindow, self).__init__(*args)
 		
 		fileMenu = self.menuBar().addMenu("&File")
+		fileMenu.addAction(QIcon.fromTheme("window-new"), "&New Tab", self.newTab, "Ctrl+T")
 		fileMenu.addAction(QIcon.fromTheme("application-exit"), "&Quit", self.close, "Ctrl+Q")
 		
 		layout = QVBoxLayout()
@@ -133,7 +134,6 @@ class NewTabWidget(QWebView):
 		self.loadFinished.connect(loadRoster)
 	
 	def updateRoster(self, roster):
-		print json.dumps(roster)
 		self.page().currentFrame().evaluateJavaScript("updateRoster(%s)" % (json.dumps(roster)))
 
 def main():
