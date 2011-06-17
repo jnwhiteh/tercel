@@ -58,9 +58,14 @@ class TabWidget(QTabWidget):
 		self.tabOpenRequested.connect(self.onTabOpenRequested)
 		self.messageReceived.connect(self.onMessageReceived)
 	
+	def closeTab(self, index):
+		contact = self.widget(index).contact
+		del self.tabs[contact]
+		self.removeTab(index)
+	
 	def onTabOpenRequested(self, contact, message):
 		if contact in self.tabs:
-			# open to that tab
+			self.setCurrentContact(contact)
 			return
 		
 		# Build the tab
@@ -83,11 +88,17 @@ class TabWidget(QTabWidget):
 		if message:
 			# If we have a message, queue it for when the webview is loaded
 			widget.webView.loadFinished.connect(lambda: self.onMessageReceived(message))
+		
+		self.setCurrentContact(contact)
 	
 	def onMessageReceived(self, message):
 		source = "newMessage(%s)" % (json.dumps(message))
 		frame = self.tabs[message["from"]].webView.page().currentFrame()
 		frame.evaluateJavaScript(source)
+	
+	def setCurrentContact(self, contact):
+		#if contact in self.tabs:
+		self.setCurrentIndex(self.indexOf(self.tabs[contact]))
 
 class TextEdit(QTextEdit):
 	def keyPressEvent(self, e):
@@ -108,19 +119,19 @@ class MainWindow(QMainWindow):
 	def __init__(self, *args):
 		super(MainWindow, self).__init__(*args)
 		
-		fileMenu = self.menuBar().addMenu("&File")
-		fileMenu.addAction(QIcon.fromTheme("window-new"), "&New Tab", self.newTab, "Ctrl+T")
-		fileMenu.addAction(QIcon.fromTheme("window-close"), "&Close Tab", self.closeTab, "Ctrl+W")
-		fileMenu.addAction(QIcon.fromTheme("application-exit"), "&Quit", self.close, "Ctrl+Q")
-		
 		layout = QVBoxLayout()
 		centralWidget = QWidget(self)
 		centralWidget.setLayout(layout)
 		self.setCentralWidget(centralWidget)
 		
 		self.tabWidget = TabWidget()
-		self.tabWidget.tabCloseRequested.connect(self.closeTab)
+		self.tabWidget.tabCloseRequested.connect(self.tabWidget.closeTab)
 		layout.addWidget(self.tabWidget)
+		
+		fileMenu = self.menuBar().addMenu("&File")
+		fileMenu.addAction(QIcon.fromTheme("window-new"), "&New Tab", self.newTab, "Ctrl+T")
+		fileMenu.addAction(QIcon.fromTheme("window-close"), "&Close Tab", self.tabWidget.closeTab, "Ctrl+W")
+		fileMenu.addAction(QIcon.fromTheme("application-exit"), "&Quit", self.close, "Ctrl+Q")
 	
 	def newTab(self):
 		self.tabWidget.addTab(NewTabWidget(), QIcon.fromTheme("user-online"), "New Tab")
@@ -138,9 +149,6 @@ class MainWindow(QMainWindow):
 			self.tabWidget.tabOpenRequested.emit(message["from"], message)
 		else:
 			self.tabWidget.messageReceived.emit(message)
-	
-	def closeTab(self):
-		self.tabWidget.removeTab(self.tabWidget.currentIndex())
 
 class NewTabWidget(QWebView):
 	def __init__(self, *args):
