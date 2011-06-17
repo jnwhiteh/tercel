@@ -92,6 +92,7 @@ class MainWindow(QMainWindow):
 		
 		fileMenu = self.menuBar().addMenu("&File")
 		fileMenu.addAction(QIcon.fromTheme("window-new"), "&New Tab", self.newTab, "Ctrl+T")
+		fileMenu.addAction(QIcon.fromTheme("window-close"), "&Close Tab", self.closeTab, "Ctrl+W")
 		fileMenu.addAction(QIcon.fromTheme("application-exit"), "&Quit", self.close, "Ctrl+Q")
 		
 		layout = QVBoxLayout()
@@ -100,7 +101,6 @@ class MainWindow(QMainWindow):
 		self.setCentralWidget(centralWidget)
 		
 		self.tabWidget = TabWidget()
-		self.tabWidget.tabCloseRequested.connect(self.actionCloseTab)
 		layout.addWidget(self.tabWidget)
 	
 	def newTab(self):
@@ -119,8 +119,8 @@ class MainWindow(QMainWindow):
 		frame = self.tabWidget.tabs[message["to"].full].webView.page().currentFrame()
 		frame.evaluateJavaScript(source)
 	
-	def actionCloseTab(self):
-		pass
+	def closeTab(self):
+		self.tabWidget.removeTab(self.tabWidget.currentIndex())
 
 class NewTabWidget(QWebView):
 	def __init__(self, *args):
