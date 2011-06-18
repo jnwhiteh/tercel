@@ -3,25 +3,26 @@
 <head>
 <title></title>
 <script type="text/javascript">
-function addContact(contactList, address, name) {
-// 	alert(contactList + "1" + address + "2" +  name + "3")
+function addContact(contactList, address, contact) {
 	var li = document.createElement("li");
 	contactList.appendChild(li);
 	
 	var a = document.createElement("a");
 	a.href = "tercel://open/" + address;
-	var text = document.createTextNode(name);
+	var text = document.createTextNode(contact["name"] ? contact["name"] : address);
 	a.appendChild(text);
-	
 	li.appendChild(a);
+	
+	text = " - Groups: ";
+	for (group in contact["groups"]) {
+		text = text + group;
+	}
 }
 
 function updateRoster(d) {
 	var contactList = document.getElementById("contact-list");
 	for (var address in d) {
-		var name = d[address]["name"];
-		name = name ? name : address;
-		addContact(contactList, address, name);
+		addContact(contactList, address, d[address]);
 	}
 }
 </script>
@@ -29,9 +30,12 @@ function updateRoster(d) {
 </style>
 </head>
 <body>
+<h3>Contacts</h3>
 <div id="tercel-contact-list">
 	<ul id="contact-list">
 	</ul>
 </div>
+<h3>Recently closed</h3>
+...
 </body>
 </html>
