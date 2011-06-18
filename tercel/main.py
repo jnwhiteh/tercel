@@ -4,10 +4,10 @@ PySide interface for Tercel
 """
 
 import json
-from time import strftime
 from PySide.QtCore import *
 from PySide.QtGui import *
 from PySide.QtWebKit import QWebView, QWebPage
+from .utils import messageToDict
 from .qtxmpp import QXMPPClient
 
 
@@ -15,8 +15,8 @@ class Tercel(QApplication):
 	def __init__(self, argv):
 		super(Tercel, self).__init__(argv)
 		self.mainWindow = MainWindow()
-		username, password = argv
-		self.xmpp = XMPPClient(self, username, password)
+		self.username, password = argv
+		self.xmpp = XMPPClient(self, self.username, password)
 		self.mainWindow.newTab()
 	
 	def openUrl(self, url):
@@ -47,7 +47,7 @@ class XMPPClient(QXMPPClient):
 
 class TabWidget(QTabWidget):
 	tabOpenRequested = Signal(str, dict)
-	messageReceived = Signal(dict)
+	messageReceived = Signal(str, dict)
 	
 	def __init__(self, *args):
 		super(TabWidget, self).__init__(*args)
@@ -89,13 +89,13 @@ class TabWidget(QTabWidget):
 		
 		if message:
 			# If we have a message, queue it for when the webview is loaded
-			widget.webView.loadFinished.connect(lambda: self.onMessageReceived(message))
+			widget.webView.loadFinished.connect(lambda: self.onMessageReceived(contact, message))
 		
 		self.setCurrentContact(contact)
 	
-	def onMessageReceived(self, message):
+	def onMessageReceived(self, contact, message):
 		source = "newMessage(%s)" % (json.dumps(message))
-		frame = self.tabs[message["from"]].webView.page().currentFrame()
+		frame = self.tabs[contact].webView.page().currentFrame()
 		frame.evaluateJavaScript(source)
 	
 	def setCurrentContact(self, contact):
@@ -108,14 +108,12 @@ class TextEdit(QTextEdit):
 			if e.modifiers() & (Qt.ShiftModifier | Qt.ControlModifier | Qt.AltModifier):
 				self.insertPlainText("\n")
 			else:
-				self.sendMessage()
+				# widget: self, widget, layout, tabwidget, currentwidget
+				widget = self.parent().parent().parent().currentWidget()
+				qApp.mainWindow.sendMessage(widget.contact, self.toPlainText())
+				self.clear()
 			return
 		super(TextEdit, self).keyPressEvent(e)
-	
-	def sendMessage(self):
-		recipient = self.parent().parent().parent().currentWidget().contact
-		qApp.xmpp.sendMessage(recipient, self.toPlainText())
-		self.clear()
 
 class MainWindow(QMainWindow):
 	def __init__(self, *args):
@@ -139,18 +137,20 @@ class MainWindow(QMainWindow):
 		self.tabWidget.addTab(NewTabWidget(), QIcon.fromTheme("user-online"), "New Tab")
 	
 	def messageReceived(self, message):
-		message = dict(message)
-		message["from_resource"] = message["from"].resource
-		message["from"] = message["from"].bare
-		message["to_resource"] = message["to"].resource
-		message["to"] = message["to"].bare
-		message["timestamp"] = strftime("[%H:%M:%S]")
+		message = messageToDict(message)
 		
 		if message["from"] not in self.tabWidget.tabs:
 			# We need a different method here, because we need to wait for page load
 			self.tabWidget.tabOpenRequested.emit(message["from"], message)
 		else:
-			self.tabWidget.messageReceived.emit(message)
+			# XXX just connect this, don't separate logic
+			self.tabWidget.messageReceived.emit(message["from"], message)
+	
+	def sendMessage(self, contact, body):
+		frame = self.tabWidget.tabs[contact].webView.page().currentFrame()
+		message = qApp.xmpp.make_message(contact, body)
+		message.send()
+		self.tabWidget.messageReceived.emit(contact, messageToDict(message))
 
 class NewTabWidget(QWebView):
 	def __init__(self, *args):
