@@ -89,6 +89,7 @@ class TabWidget(QTabWidget):
 		
 		self.addTab(widget, QIcon.fromTheme("user-online"), contact)
 		self.setCurrentContact(contact)
+		widget.textEdit.setFocus(Qt.OtherFocusReason)
 	
 	def onMessageReceived(self, contact, message):
 		source = "newMessage(%s)" % (json.dumps(message))
@@ -141,7 +142,6 @@ class MainWindow(QMainWindow):
 		message = messageToDict(message)
 		
 		if message["from"] not in self.tabWidget.tabs:
-			# We need a different method here, because we need to wait for page load
 			self.tabWidget.tabOpenRequested.emit(message["from"])
 		
 		self.tabWidget.messageReceived.emit(message["from"], message)
