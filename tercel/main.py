@@ -59,8 +59,10 @@ class TabWidget(QTabWidget):
 		self.messageReceived.connect(self.onMessageReceived)
 	
 	def closeTab(self, index):
-		contact = self.widget(index).contact
-		del self.tabs[contact]
+		widget = self.widget(index)
+		if hasattr(widget, "contact"):
+			del self.tabs[widget.contact]
+		del widget
 		self.removeTab(index)
 	
 	def onTabOpenRequested(self, contact, message):
@@ -130,7 +132,7 @@ class MainWindow(QMainWindow):
 		
 		fileMenu = self.menuBar().addMenu("&File")
 		fileMenu.addAction(QIcon.fromTheme("window-new"), "&New Tab", self.newTab, "Ctrl+T")
-		fileMenu.addAction(QIcon.fromTheme("window-close"), "&Close Tab", self.tabWidget.closeTab, "Ctrl+W")
+		fileMenu.addAction(QIcon.fromTheme("window-close"), "&Close Tab", lambda: self.tabWidget.closeTab(self.tabWidget.currentIndex()), "Ctrl+W")
 		fileMenu.addAction(QIcon.fromTheme("application-exit"), "&Quit", self.close, "Ctrl+Q")
 	
 	def newTab(self):
