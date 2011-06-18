@@ -22,7 +22,7 @@ class Tercel(QApplication):
 	def openUrl(self, url):
 		if url.scheme() == "tercel":
 			address = url.path()[1:]
-			self.mainWindow.tabWidget.tabOpenRequested.emit(address, {})
+			self.mainWindow.tabWidget.tabOpenRequested.emit(address)
 
 class XMPPConnectionThread(QThread):
 	def __init__(self, xmpp, host, *args):
@@ -46,7 +46,7 @@ class XMPPClient(QXMPPClient):
 		self.queryRoster()
 
 class TabWidget(QTabWidget):
-	tabOpenRequested = Signal(str, dict)
+	tabOpenRequested = Signal(str)
 	messageReceived = Signal(str, dict)
 	
 	def __init__(self, *args):
@@ -65,7 +65,7 @@ class TabWidget(QTabWidget):
 		del widget
 		self.removeTab(index)
 	
-	def onTabOpenRequested(self, contact, message):
+	def onTabOpenRequested(self, contact):
 		if contact in self.tabs:
 			self.setCurrentContact(contact)
 			return
@@ -78,25 +78,26 @@ class TabWidget(QTabWidget):
 		self.tabs[contact] = widget
 		
 		widget.webView = QWebView()
-		widget.webView.load("file:///home/adys/src/git/tercel/tercel/res/tab.html")
+		widget.webView.isLoaded = False
+		widget.webView.loadFinished.connect(lambda: setattr(widget.webView, "isLoaded", True))
 		widget.webView.linkClicked.connect(qApp.openUrl)
+		widget.webView.load("file:///home/adys/src/git/tercel/tercel/res/tab.html")
 		layout.addWidget(widget.webView)
 		
 		widget.textEdit = TextEdit()
 		layout.addWidget(widget.textEdit)
 		
 		self.addTab(widget, QIcon.fromTheme("user-online"), contact)
-		
-		if message:
-			# If we have a message, queue it for when the webview is loaded
-			widget.webView.loadFinished.connect(lambda: self.onMessageReceived(contact, message))
-		
 		self.setCurrentContact(contact)
 	
 	def onMessageReceived(self, contact, message):
 		source = "newMessage(%s)" % (json.dumps(message))
-		frame = self.tabs[contact].webView.page().currentFrame()
-		frame.evaluateJavaScript(source)
+		webView = self.tabs[contact].webView
+		# Check if the page is loaded yet, otherwise evaluateJavaScript doesn't do anything
+		if webView.isLoaded:
+			webView.page().currentFrame().evaluateJavaScript(source)
+		else:
+			webView.loadFinished.connect(lambda: webView.page().currentFrame().evaluateJavaScript(source))
 	
 	def setCurrentContact(self, contact):
 		#if contact in self.tabs:
@@ -141,10 +142,9 @@ class MainWindow(QMainWindow):
 		
 		if message["from"] not in self.tabWidget.tabs:
 			# We need a different method here, because we need to wait for page load
-			self.tabWidget.tabOpenRequested.emit(message["from"], message)
-		else:
-			# XXX just connect this, don't separate logic
-			self.tabWidget.messageReceived.emit(message["from"], message)
+			self.tabWidget.tabOpenRequested.emit(message["from"])
+		
+		self.tabWidget.messageReceived.emit(message["from"], message)
 	
 	def sendMessage(self, contact, body):
 		frame = self.tabWidget.tabs[contact].webView.page().currentFrame()
