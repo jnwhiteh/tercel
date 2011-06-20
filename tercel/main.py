@@ -109,9 +109,9 @@ class TabWidget(QTabWidget):
 		self.setCurrentIndex(self.indexOf(self.tabs[contact]))
 
 class TextEdit(QTextEdit):
-	def keyPressEvent(self, e):
-		if e.key() == Qt.Key_Return or e.key() == Qt.Key_Enter:
-			if e.modifiers() & (Qt.ShiftModifier | Qt.ControlModifier | Qt.AltModifier):
+	def keyPressEvent(self, event):
+		if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
+			if event.modifiers() & (Qt.ShiftModifier | Qt.ControlModifier | Qt.AltModifier):
 				self.insertPlainText("\n")
 			else:
 				# widget: self, widget, layout, tabwidget, currentwidget
@@ -119,7 +119,7 @@ class TextEdit(QTextEdit):
 				qApp.mainWindow.sendMessage(widget.contact, self.toPlainText())
 				self.clear()
 			return
-		super(TextEdit, self).keyPressEvent(e)
+		super(TextEdit, self).keyPressEvent(event)
 
 class MainWindow(QMainWindow):
 	def __init__(self, *args):
