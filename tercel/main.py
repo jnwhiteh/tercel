@@ -7,7 +7,6 @@ import json
 from PySide.QtCore import *
 from PySide.QtGui import *
 from PySide.QtWebKit import QWebView, QWebPage
-from .utils import messageToDict
 from .qtxmpp import QXMPPClient
 
 
@@ -19,35 +18,44 @@ class Tercel(QApplication):
 		self.settings = QSettings()
 		self.settings.setPath(QSettings.IniFormat, QSettings.UserScope, "tercel")
 		self.mainWindow = MainWindow()
-		self.username, password = argv
-		self.xmpp = XMPPClient(self, self.username, password)
+		self.populateAccounts()
 		self.mainWindow.newTab()
 	
 	def openUrl(self, url):
 		if url.scheme() == "tercel":
 			address = url.path()[1:]
 			self.mainWindow.tabWidget.tabOpenRequested.emit(address)
+	
+	def populateAccounts(self):
+		settings = self.settings
+		self.accounts = {}
+		size = settings.beginReadArray("logins")
+		for i in range(size):
+			settings.setArrayIndex(i)
+			username = settings.value("username")
+			client = XMPPClient(username, settings.value("password"))
+			host = settings.value("host")
+			port = int(settings.value("port"))
+			client.start(host, port)
+			self.accounts[username] = client
+		
+		settings.endArray()
 
-class XMPPConnectionThread(QThread):
-	def __init__(self, xmpp, host, *args):
-		super(XMPPConnectionThread, self).__init__(*args)
-		self.xmpp = xmpp
+class ConnectionThread(QThread):
+	def __init__(self, client, host, *args):
+		super(ConnectionThread, self).__init__(*args)
+		self.client = client
 		self.host = host
 	
 	def run(self):
-		self.xmpp.connect(self.host)
-		self.xmpp.process(threaded=False)
+		self.client.connectToHost(self.host)
+		self.client.waitForProcessEnd()
 
 class XMPPClient(QXMPPClient):
-	def __init__(self, *args):
-		super(XMPPClient, self).__init__(*args)
-		self.connect_("session_start", self.start)
-		self.connect_("message", self.parent().mainWindow.messageReceived)
-		XMPPConnectionThread(self, ("talk.google.com", 5222), qApp).start()
-	
-	def start(self, event):
-		self.sendPresence(pshow="Writing an XMPP client, please do not send messages")
-		self.queryRoster()
+	def start(self, host, port):
+		ConnectionThread(self, (host, port), qApp).start()
+		self.messageReceived.connect(qApp.mainWindow.messageReceived)
+		#self.sendPresence(pshow="Writing an XMPP client, please do not send messages")
 
 class TabWidget(QTabWidget):
 	tabOpenRequested = Signal(str)
@@ -149,8 +157,6 @@ class MainWindow(QMainWindow):
 		event.accept()
 	
 	def messageReceived(self, message):
-		message = messageToDict(message)
-		
 		if message["from"] not in self.tabWidget.tabs:
 			self.tabWidget.tabOpenRequested.emit(message["from"])
 		
@@ -187,13 +193,14 @@ class NewTabWidget(QWebView):
 		super(NewTabWidget, self).__init__(*args)
 		self.load("file:///home/adys/src/git/tercel/tercel/res/new-tab.html")
 		
-		def loadRoster():
-			# blocker?
-			qApp.xmpp.queryRoster()
-			self.updateRoster(qApp.xmpp.roster)
-		self.loadFinished.connect(loadRoster)
+		self.loadFinished.connect(self.loadRoster)
 		self.linkClicked.connect(qApp.openUrl)
 		self.page().setLinkDelegationPolicy(QWebPage.DelegateAllLinks)
+	
+	def loadRoster(self):
+		for account in qApp.accounts.values():
+			account.queryRoster()
+			account.rosterUpdated.connect(self.updateRoster)
 	
 	def updateRoster(self, roster):
 		# XXX laggy
