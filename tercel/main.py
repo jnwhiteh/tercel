@@ -14,6 +14,10 @@ from .qtxmpp import QXMPPClient
 class Tercel(QApplication):
 	def __init__(self, argv):
 		super(Tercel, self).__init__(argv)
+		self.setApplicationName("tercel")
+		self.setOrganizationName("tercel")
+		self.settings = QSettings()
+		self.settings.setPath(QSettings.IniFormat, QSettings.UserScope, "tercel")
 		self.mainWindow = MainWindow()
 		self.username, password = argv
 		self.xmpp = XMPPClient(self, self.username, password)
@@ -134,9 +138,12 @@ class MainWindow(QMainWindow):
 		fileMenu.addAction(QIcon.fromTheme("window-new"), "&New Tab", self.newTab, "Ctrl+T")
 		fileMenu.addAction(QIcon.fromTheme("window-close"), "&Close Tab", lambda: self.tabWidget.closeTab(self.tabWidget.currentIndex()), "Ctrl+W")
 		fileMenu.addAction(QIcon.fromTheme("application-exit"), "&Quit", self.close, "Ctrl+Q")
+		
+		self.readSettings()
 	
-	def newTab(self):
-		self.tabWidget.addTab(NewTabWidget(), QIcon.fromTheme("user-online"), "New Tab")
+	def closeEvent(self, event):
+		self.writeSettings()
+		event.accept()
 	
 	def messageReceived(self, message):
 		message = messageToDict(message)
@@ -146,11 +153,31 @@ class MainWindow(QMainWindow):
 		
 		self.tabWidget.messageReceived.emit(message["from"], message)
 	
+	def newTab(self):
+		self.tabWidget.addTab(NewTabWidget(), QIcon.fromTheme("user-online"), "New Tab")
+	
+	def readSettings(self):
+		settings = qApp.settings
+		settings.beginGroup("MainWindow")
+		self.resize(settings.value("size", QSize(400, 400)))
+		self.move(settings.value("pos", QPoint(200, 200)))
+		if settings.value("maximized", "false") == "true": # http://lists.pyside.org/pipermail/pyside/2011-April/002401.html
+			self.showMaximized()
+		settings.endGroup()
+	
 	def sendMessage(self, contact, body):
 		frame = self.tabWidget.tabs[contact].webView.page().currentFrame()
 		message = qApp.xmpp.make_message(contact, body)
 		message.send()
 		self.tabWidget.messageReceived.emit(contact, messageToDict(message))
+	
+	def writeSettings(self):
+		settings = qApp.settings
+		settings.beginGroup("MainWindow")
+		settings.setValue("size", self.size())
+		settings.setValue("pos", self.pos())
+		settings.setValue("maximized", self.isMaximized())
+		settings.endGroup()
 
 class NewTabWidget(QWebView):
 	def __init__(self, *args):
