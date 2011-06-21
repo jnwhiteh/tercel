@@ -163,10 +163,10 @@ class MainWindow(QMainWindow):
 		self.tabWidget.messageReceived.emit(message["from"], message)
 	
 	def newTab(self):
-		self.tabWidget.addTab(NewTabWidget(), QIcon.fromTheme("user-online"), "New Tab")
+		self.tabWidget.setCurrentIndex(self.tabWidget.addTab(NewTabWidget(), QIcon.fromTheme("user-online"), "New Tab"))
 	
 	def openSettings(self):
-		self.tabWidget.addTab(SettingsTabWidget(), QIcon.fromTheme("user-online"), "Tercel Settings")
+		self.tabWidget.setCurrentIndex(self.tabWidget.addTab(SettingsTabWidget(), QIcon.fromTheme("user-online"), "Tercel Settings"))
 	
 	def readSettings(self):
 		settings = qApp.settings
