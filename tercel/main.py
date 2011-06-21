@@ -165,6 +165,9 @@ class MainWindow(QMainWindow):
 	def newTab(self):
 		self.tabWidget.addTab(NewTabWidget(), QIcon.fromTheme("user-online"), "New Tab")
 	
+	def openSettings(self):
+		self.tabWidget.addTab(SettingsTabWidget(), QIcon.fromTheme("user-online"), "Tercel Settings")
+	
 	def readSettings(self):
 		settings = qApp.settings
 		settings.beginGroup("MainWindow")
@@ -205,6 +208,18 @@ class NewTabWidget(QWebView):
 	def updateRoster(self, roster):
 		# XXX laggy
 		self.page().currentFrame().evaluateJavaScript("updateRoster(%s)" % (json.dumps(roster)))
+
+class SettingsTabWidget(QWebView):
+	def __init__(self, *args):
+		super(SettingsTabWidget, self).__init__(*args)
+		self.load("file:///home/adys/src/git/tercel/tercel/res/settings-tab.html")
+		
+		self.loadFinished.connect(self.loadSettings)
+		self.linkClicked.connect(qApp.openUrl)
+		self.page().setLinkDelegationPolicy(QWebPage.DelegateAllLinks)
+	
+	def loadSettings(self):
+		self.page().currentFrame().evaluateJavaScript("loadAccounts(%s)" % (json.dumps(qApp.accounts)))
 
 def main():
 	import signal
