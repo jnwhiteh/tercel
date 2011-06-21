@@ -17,9 +17,13 @@ class QXMPPClient(QObject):
 	messageReceived = Signal(str, dict)
 	rosterUpdated = Signal(object)
 	
-	def __init__(self, *args):
+	def __init__(self, username, password, host, port=5222):
 		super(QXMPPClient, self).__init__()
-		self._stream = ClientXMPP(*args)
+		self._stream = ClientXMPP(username, password)
+		self._username = username
+		self._password = password
+		self._host = host
+		self._port = port
 		# Wrap Qt signals around the sleekxmpp ones
 		self._stream.add_event_handler("message", self.__messageReceived)
 		self._stream.add_event_handler("roster_update", self.__rosterUpdated)
@@ -34,6 +38,18 @@ class QXMPPClient(QObject):
 	
 	def connectToHost(self, host):
 		self.stream().connect(host)
+	
+	def host(self):
+		return self._host
+	
+	def password(self):
+		return self._password
+	
+	def port(self):
+		return self._port
+	
+	def username(self):
+		return self._username
 	
 	def waitForProcessEnd(self):
 		self.stream().process(threaded=False)

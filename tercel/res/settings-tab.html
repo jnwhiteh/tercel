@@ -3,24 +3,45 @@
 <head>
 <title></title>
 <script type="text/javascript">
-function addAccount(accountList, account) {
+function addAccount(accountList, address, account) {
 	var div = document.createElement("div");
 	accountList.appendChild(div);
 	
+	var h4 = document.createElement("h4");
+	h4.innerHTML = address
+	div.appendChild(h4);
+	
 	var accountName = document.createElement("input");
-	accountName.type = text;
+	accountName.type = "text";
 	accountName.placeholder = "Account name";
+	accountName.value = address;
 	div.appendChild(accountName);
 	
 	var password = document.createElement("input");
-	password.type = password;
+	password.type = "password";
 	password.placeholder = "Password";
+	password.value = account["password"];
 	div.appendChild(password);
-	alert(accountList)
+	
+	var host = document.createElement("input");
+	host.type = "text";
+	host.placeholder = "Host";
+	host.value = account["host"];
+	div.appendChild(host);
+	
+	var port = document.createElement("input");
+	port.type = "text";
+	port.placeholder = "Port";
+	port.value = account["port"];
+	div.appendChild(port);
 }
 
 function addNewAccountForm(accountList) {
 	var div = document.createElement("div");
+	
+	var h4 = document.createElement("h4");
+	h4.innerHTML = "Add an account";
+	div.appendChild(h4);
 	
 	var accountName = document.createElement("input");
 	accountName.type = "text";
@@ -32,7 +53,17 @@ function addNewAccountForm(accountList) {
 	password.placeholder = "Password";
 	div.appendChild(password);
 	
-	accountList.appendChild(div)
+	var host = document.createElement("input");
+	host.type = "text";
+	host.placeholder = "Host";
+	div.appendChild(host);
+	
+	var port = document.createElement("input");
+	port.type = "text";
+	port.placeholder = "Port";
+	div.appendChild(port);
+	
+	accountList.appendChild(div);
 }
 
 function loadAccounts(d) {

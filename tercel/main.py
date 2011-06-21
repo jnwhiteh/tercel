@@ -22,6 +22,7 @@ class Tercel(QApplication):
 		self.mainWindow.newTab()
 	
 	def openUrl(self, url):
+		print url
 		if url.scheme() == "tercel":
 			address = url.path()[1:]
 			self.mainWindow.tabWidget.tabOpenRequested.emit(address)
@@ -33,10 +34,13 @@ class Tercel(QApplication):
 		for i in range(size):
 			settings.setArrayIndex(i)
 			username = settings.value("username")
-			client = XMPPClient(username, settings.value("password"))
-			host = settings.value("host")
-			port = int(settings.value("port"))
-			client.start(host, port)
+			client = XMPPClient(
+				username,
+				settings.value("password"),
+				settings.value("host"),
+				int(settings.value("port")),
+			)
+			client.start()
 			self.accounts[username] = client
 		
 		settings.endArray()
@@ -52,8 +56,8 @@ class ConnectionThread(QThread):
 		self.client.waitForProcessEnd()
 
 class XMPPClient(QXMPPClient):
-	def start(self, host, port):
-		ConnectionThread(self, (host, port), qApp).start()
+	def start(self):
+		ConnectionThread(self, (self.host(), self.port()), qApp).start()
 		self.messageReceived.connect(qApp.mainWindow.messageReceived)
 		#self.sendPresence(pshow="Writing an XMPP client, please do not send messages")
 
@@ -222,7 +226,14 @@ class SettingsTabWidget(QWebView):
 		self.page().setLinkDelegationPolicy(QWebPage.DelegateAllLinks)
 	
 	def loadSettings(self):
-		self.page().currentFrame().evaluateJavaScript("loadAccounts(%s)" % (json.dumps(qApp.accounts)))
+		source = {}
+		for address, account in qApp.accounts.items():
+			source[address] = {
+				"password": account.password(),
+				"host": account.host(),
+				"port": account.port(),
+			}
+		self.page().currentFrame().evaluateJavaScript("loadAccounts(%s)" % (json.dumps(source)))
 
 def main():
 	import signal
