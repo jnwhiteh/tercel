@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title></title>
+<script type="text/javascript">
+function addAccount(accountList, account) {
+	var div = document.createElement("div");
+	accountList.appendChild(div);
+	
+	var accountName = document.createElement("input");
+	accountName.type = text;
+	accountName.placeholder = "Account name";
+	div.appendChild(accountName);
+	
+	var password = document.createElement("input");
+	password.type = password;
+	password.placeholder = "Password";
+	div.appendChild(password);
+	alert(accountList)
+}
+
+function addNewAccountForm(accountList) {
+	var div = document.createElement("div");
+	
+	var accountName = document.createElement("input");
+	accountName.type = "text";
+	accountName.placeholder = "Account name";
+	div.appendChild(accountName);
+	
+	var password = document.createElement("input");
+	password.type = "password";
+	password.placeholder = "Password";
+	div.appendChild(password);
+	
+	accountList.appendChild(div)
+}
+
+function loadAccounts(d) {
+	var accountList = document.getElementById("account-list");
+	for (var address in d) {
+		addAccount(accountList, address, d[address]);
+	}
+	addNewAccountForm(accountList);
+}
+</script>
+<style type="text/css">
+</style>
+</head>
+<body>
+<h3>Accounts</h3>
+<div id="tercel-account-list">
+	<ul id="account-list">
+	</ul>
+</div>
+</body>
+</html>
