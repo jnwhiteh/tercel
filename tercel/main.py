@@ -147,6 +147,9 @@ class MainWindow(QMainWindow):
 		fileMenu.addAction(QIcon.fromTheme("window-close"), "&Close Tab", lambda: self.tabWidget.closeTab(self.tabWidget.currentIndex()), "Ctrl+W")
 		fileMenu.addAction(QIcon.fromTheme("application-exit"), "&Quit", self.close, "Ctrl+Q")
 		
+		settingsMenu = self.menuBar().addMenu("&Settings")
+		settingsMenu.addAction("Configure", self.openSettings)
+		
 		aboutMenu = self.menuBar().addMenu("&Help")
 		aboutMenu.addAction(QIcon.fromTheme("help-about"), "&About", lambda: QDesktopServices.openUrl("https://github.com/adys/tercel/"))
 		
