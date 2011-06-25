@@ -3,12 +3,12 @@
 <head>
 <title></title>
 <script type="text/javascript">
-function addContact(contactList, address, contact) {
+function addContact(contactList, account, address, contact) {
 	var li = document.createElement("li");
 	contactList.appendChild(li);
 	
 	var a = document.createElement("a");
-	a.href = "tercel://open/" + address;
+	a.href = "tercel://open/" + account + "/" + address;
 	var text = document.createTextNode(contact["name"] ? contact["name"] : address);
 	a.appendChild(text);
 	li.appendChild(a);
@@ -19,10 +19,10 @@ function addContact(contactList, address, contact) {
 	}
 }
 
-function updateRoster(d) {
+function updateRoster(account, roster) {
 	var contactList = document.getElementById("contact-list");
-	for (var address in d) {
-		addContact(contactList, address, d[address]);
+	for (var address in roster) {
+		addContact(contactList, account, address, roster[address]);
 	}
 }
 </script>

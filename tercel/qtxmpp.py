@@ -8,17 +8,18 @@ from sleekxmpp import ClientXMPP
 from .utils import messageToDict
 
 
-class QXMPPClient(QObject):
+class QXmppClient(QObject):
 	"""
 	A Qt XMPP client
 	Wrapper around sleekxmpp.ClientXMPP
 	"""
 	
-	messageReceived = Signal(str, dict)
-	rosterUpdated = Signal(object)
+	messageReceived = Signal(dict)
+	rosterUpdated = Signal(str, object)
+	#messageSent = Signal(dict)
 	
-	def __init__(self, username, password, host, port=5222):
-		super(QXMPPClient, self).__init__()
+	def __init__(self, username, password, host, port=5222, parent=None):
+		super(QXmppClient, self).__init__(parent)
 		self._stream = ClientXMPP(username, password)
 		self._username = username
 		self._password = password
@@ -32,9 +33,10 @@ class QXMPPClient(QObject):
 		message = messageToDict(message)
 		self.messageReceived.emit(message)
 	
-	def __rosterUpdated(self, roster):
-		roster = dict(roster["roster"]["items"])
-		self.rosterUpdated.emit(roster)
+	def __rosterUpdated(self, iq):
+		roster = dict(iq["roster"]["items"])
+		account = str(iq["to"].bare)
+		self.rosterUpdated.emit(account, roster)
 	
 	def connectToHost(self, host):
 		self.stream().connect(host)
@@ -48,20 +50,58 @@ class QXMPPClient(QObject):
 	def port(self):
 		return self._port
 	
+	def queryRoster(self):
+		self.stream().get_roster(block=False)
+	
+	def roster(self):
+		return self.stream().roster
+	
+	def sendMessage(self, contact, message):
+		message = self.stream().make_message(contact, message)
+		message.send()
+		return messageToDict(message)
+	
+	def stream(self):
+		return self._stream
+	
 	def username(self):
 		return self._username
 	
 	def waitForProcessEnd(self):
 		self.stream().process(threaded=False)
+
+class QXmppMessage(QObject):
+	"""
+	An XMPP message
+	Parent should be a QXmppClient instance
+	"""
 	
-	def roster(self):
-		return self.stream().roster
+	def __init__(self, body, parent=None):
+		super(QXmppClient, self).__init__(parent)
+		self._body = body
 	
-	def queryRoster(self):
-		self.stream().get_roster(block=False)
+	def body(self):
+		return self._body
+
+class QXmppUser(QObject):
+	"""
+	An XMPP user
+	Parent should be a QXmppClient instance
+	"""
 	
-	def stream(self):
-		return self._stream
+	messageReceived = Signal(dict)
+	messageSent = Signal(dict)
+	
+	def __init__(self, jabberId, parent=None):
+		super(QXmppClient, self).__init__(parent)
+		self._jabberId = jabberId
+	
+	def jabberId(self):
+		return self._jabberId
+	
+	def sendMessage(self, body):
+		message = QXmppMessage(body, self.parent())
+		self.parent().stream().make_message(self.jabberID(), body).send()
 
 # Remove for production
 #import logging

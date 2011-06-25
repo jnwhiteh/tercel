@@ -7,7 +7,7 @@ import json
 from PySide.QtCore import *
 from PySide.QtGui import *
 from PySide.QtWebKit import QWebView, QWebPage
-from .qtxmpp import QXMPPClient
+from .qtxmpp import QXmppClient
 
 
 class Tercel(QApplication):
@@ -22,10 +22,9 @@ class Tercel(QApplication):
 		self.mainWindow.newTab()
 	
 	def openUrl(self, url):
-		print url
 		if url.scheme() == "tercel":
-			address = url.path()[1:]
-			self.mainWindow.tabWidget.tabOpenRequested.emit(address)
+			account, contact = url.path()[1:].split("/")
+			self.mainWindow.tabWidget.tabOpenRequested.emit(account, contact)
 	
 	def populateAccounts(self):
 		settings = self.settings
@@ -55,15 +54,15 @@ class ConnectionThread(QThread):
 		self.client.connectToHost(self.host)
 		self.client.waitForProcessEnd()
 
-class XMPPClient(QXMPPClient):
+class XMPPClient(QXmppClient):
 	def start(self):
 		ConnectionThread(self, (self.host(), self.port()), qApp).start()
-		self.messageReceived.connect(qApp.mainWindow.messageReceived)
+		self.messageReceived.connect(qApp.mainWindow.onMessageReceived)
 		#self.sendPresence(pshow="Writing an XMPP client, please do not send messages")
 
 class TabWidget(QTabWidget):
-	tabOpenRequested = Signal(str)
-	messageReceived = Signal(str, dict)
+	tabOpenRequested = Signal(str, str)
+	newMessage = Signal(str, dict)
 	
 	def __init__(self, *args):
 		super(TabWidget, self).__init__(*args)
@@ -72,7 +71,7 @@ class TabWidget(QTabWidget):
 		self.setMovable(True)
 		self.setTabsClosable(True)
 		self.tabOpenRequested.connect(self.onTabOpenRequested)
-		self.messageReceived.connect(self.onMessageReceived)
+		self.newMessage.connect(self.onNewMessage)
 	
 	def closeTab(self, index):
 		widget = self.widget(index)
@@ -81,7 +80,7 @@ class TabWidget(QTabWidget):
 		del widget
 		self.removeTab(index)
 	
-	def onTabOpenRequested(self, contact):
+	def onTabOpenRequested(self, account, contact):
 		if contact in self.tabs:
 			self.setCurrentContact(contact)
 			return
@@ -90,6 +89,7 @@ class TabWidget(QTabWidget):
 		layout = QVBoxLayout()
 		widget = QWidget(self)
 		widget.setLayout(layout)
+		widget.account = account
 		widget.contact = contact
 		self.tabs[contact] = widget
 		
@@ -107,7 +107,7 @@ class TabWidget(QTabWidget):
 		self.setCurrentContact(contact)
 		widget.textEdit.setFocus(Qt.OtherFocusReason)
 	
-	def onMessageReceived(self, contact, message):
+	def onNewMessage(self, contact, message):
 		source = "newMessage(%s)" % (json.dumps(message))
 		webView = self.tabs[contact].webView
 		# Check if the page is loaded yet, otherwise evaluateJavaScript doesn't do anything
@@ -128,7 +128,7 @@ class TextEdit(QTextEdit):
 			else:
 				# widget: self, widget, layout, tabwidget, currentwidget
 				widget = self.parent().parent().parent().currentWidget()
-				qApp.mainWindow.sendMessage(widget.contact, self.toPlainText())
+				qApp.mainWindow.sendMessage(widget.account, widget.contact, self.toPlainText())
 				self.clear()
 			return
 		super(TextEdit, self).keyPressEvent(event)
@@ -163,11 +163,11 @@ class MainWindow(QMainWindow):
 		self.writeSettings()
 		event.accept()
 	
-	def messageReceived(self, message):
+	def onMessageReceived(self, message):
 		if message["from"] not in self.tabWidget.tabs:
-			self.tabWidget.tabOpenRequested.emit(message["from"])
+			self.tabWidget.tabOpenRequested.emit(message["to"], message["from"])
 		
-		self.tabWidget.messageReceived.emit(message["from"], message)
+		self.tabWidget.newMessage.emit(message["from"], message)
 	
 	def newTab(self):
 		self.tabWidget.setCurrentIndex(self.tabWidget.addTab(NewTabWidget(), QIcon.fromTheme("user-online"), "New Tab"))
@@ -184,11 +184,11 @@ class MainWindow(QMainWindow):
 			self.showMaximized()
 		settings.endGroup()
 	
-	def sendMessage(self, contact, body):
+	def sendMessage(self, account, contact, body):
 		frame = self.tabWidget.tabs[contact].webView.page().currentFrame()
-		message = qApp.xmpp.make_message(contact, body)
-		message.send()
-		self.tabWidget.messageReceived.emit(contact, messageToDict(message))
+		account = qApp.accounts[account]
+		message = account.sendMessage(contact, body)
+		self.tabWidget.newMessage.emit(contact, message)
 	
 	def writeSettings(self):
 		settings = qApp.settings
@@ -212,9 +212,9 @@ class NewTabWidget(QWebView):
 			account.queryRoster()
 			account.rosterUpdated.connect(self.updateRoster)
 	
-	def updateRoster(self, roster):
+	def updateRoster(self, account, roster):
 		# XXX laggy
-		self.page().currentFrame().evaluateJavaScript("updateRoster(%s)" % (json.dumps(roster)))
+		self.page().currentFrame().evaluateJavaScript("updateRoster(%r, %s)" % (str(account), json.dumps(roster)))
 
 class SettingsTabWidget(QWebView):
 	def __init__(self, *args):
