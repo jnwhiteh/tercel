@@ -13,4 +13,6 @@ def messageToDict(message):
 	message["to_resource"] = message["to"].resource
 	message["to"] = message["to"].bare
 	message["timestamp"] = strftime("[%H:%M:%S]")
+	if "html" in message:
+		message["html"] = str(message["html"])
 	return message
